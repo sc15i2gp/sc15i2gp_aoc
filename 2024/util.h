@@ -49,10 +49,15 @@ tokeniser init_tokeniser(char *in, u32 in_len)
 
 typedef enum
 {
-    TOKEN_NONE,
+    TOKEN_NONE = 0,
     TOKEN_INTEGER,
+    TOKEN_WORD,
     TOKEN_SPACE,
-    TOKEN_NEWLINE,
+    TOKEN_NEWLINE = '\n',
+    TOKEN_OPAREN = '(',
+    TOKEN_CPAREN = ')',
+    TOKEN_COMMA  = ',',
+    TOKEN_APOST  = '\'',
     TOKEN_END,
     TOKEN_COUNT
 } token_type;
@@ -66,9 +71,24 @@ typedef struct
     u32 int_val;
 } token;
 
+u8 str_eq(char *s0, u32 s0_len, char *s1, u32 s1_len)
+{
+    if(s0_len != s1_len) return 0;
+    for(u32 i = 0; i < s0_len; i += 1) if(s0[i] != s1[i]) return 0;
+
+    return 1;
+}
+
 u8 is_num_char(char c)
 {
     return (c >= '0') && (c <= '9');
+}
+
+u8 is_alpha_char(char c)
+{
+    c &= 0b11011111;
+
+    return (c >= 'A') && (c <= 'Z');
 }
 
 u8 is_newline(char c)
@@ -119,6 +139,16 @@ token read_token(tokeniser *t)
         return ret;
     }
 
+    if(is_alpha_char(*t->current))
+    {
+        ret.loc  = t->current;
+        ret.type = TOKEN_WORD;
+        for(; is_alpha_char(*t->current) && (t->current != t->end); t->current += 1);
+        ret.len = t->current - ret.loc;
+
+        return ret;
+    }
+
     if(is_space(*t->current))
     {
         ret.type = TOKEN_SPACE;
@@ -130,16 +160,29 @@ token read_token(tokeniser *t)
         return ret;
     }
 
-    if(is_newline(*t->current))
+    switch(*t->current)
     {
-        ret.type = TOKEN_NEWLINE;
-        ret.loc  = t->current;
-        ret.len  = 1;
+        case TOKEN_OPAREN:
+        case TOKEN_CPAREN:
+        case TOKEN_COMMA:
+        case TOKEN_APOST:
+        case TOKEN_NEWLINE:
+        {
+            ret.type = *t->current;
+            ret.loc  = t->current;
+            ret.len  = 1;
 
-        t->current += 1;
+            t->current += 1;
 
-        return ret;
+            return ret;
+        }
     }
+
+    ret.type = TOKEN_NONE;
+    ret.loc  = NULL;
+    ret.len  = 0;
+
+    return ret;
 }
 
 void print_token(token *t)
