@@ -18,11 +18,11 @@ void parse_pairs(tokeniser *t, u32 num_pairs, u32 *left, u32 *right)
         tok = read_token(t); //INTEGER
         left[i] = tok.int_val;
 
-        tok = read_token(t); //WHITESPACE
+        tok = read_token(t); //SPACE
         tok = read_token(t); //INTEGER
         right[i] = tok.int_val;
 
-        tok = read_token(t); //WHITESPACE
+        tok = read_token(t); //NEWLINE
    } 
 }
 

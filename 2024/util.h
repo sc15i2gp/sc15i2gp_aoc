@@ -25,6 +25,11 @@ u8 *read_file_contents(const char *path, u32 *ret_file_size)
     return file_contents;
 }
 
+void dealloc(void *ptr)
+{
+    VirtualFree(ptr, 0, MEM_RELEASE);
+}
+
 typedef struct
 {
     char *start;
@@ -46,7 +51,8 @@ typedef enum
 {
     TOKEN_NONE,
     TOKEN_INTEGER,
-    TOKEN_WHITESPACE,
+    TOKEN_SPACE,
+    TOKEN_NEWLINE,
     TOKEN_END,
     TOKEN_COUNT
 } token_type;
@@ -65,9 +71,14 @@ u8 is_num_char(char c)
     return (c >= '0') && (c <= '9');
 }
 
-u8 is_whitespace(char c)
+u8 is_newline(char c)
 {
-    return (c == '\n') || (c == ' ') || (c == '\r') || (c == '\t');
+    return c == '\n';
+}
+
+u8 is_space(char c)
+{
+    return c == ' ';
 }
 
 u32 str_to_int(char *str, u32 str_len)
@@ -108,13 +119,27 @@ token read_token(tokeniser *t)
         return ret;
     }
 
-    ret.type = TOKEN_WHITESPACE;
-    ret.loc  = t->current;
+    if(is_space(*t->current))
+    {
+        ret.type = TOKEN_SPACE;
+        ret.loc  = t->current;
 
-    for(; is_whitespace(*t->current) && (t->current != t->end); t->current += 1);
-    ret.len = t->current - ret.loc;
+        for(; is_space(*t->current) && (t->current != t->end); t->current += 1);
+        ret.len = t->current - ret.loc;
 
-    return ret;
+        return ret;
+    }
+
+    if(is_newline(*t->current))
+    {
+        ret.type = TOKEN_NEWLINE;
+        ret.loc  = t->current;
+        ret.len  = 1;
+
+        t->current += 1;
+
+        return ret;
+    }
 }
 
 void print_token(token *t)
@@ -126,7 +151,8 @@ void print_token(token *t)
             printf("TOKEN: Type:(INTEGER) Len:(%u) Str:(%.*s) Val:(%u)", t->len, t->len, t->loc, t->int_val);
             break;
         }
-        case TOKEN_WHITESPACE:
+        case TOKEN_SPACE:
+        case TOKEN_NEWLINE:
         {
             printf("TOKEN: Type:(WHITESPACE) Len:(%u)", t->len);
             break;
