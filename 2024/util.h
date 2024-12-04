@@ -71,7 +71,7 @@ typedef struct
     u32 int_val;
 } token;
 
-u8 str_eq(char *s0, u32 s0_len, char *s1, u32 s1_len)
+u8 str_eq(const char *s0, u32 s0_len, const char *s1, u32 s1_len)
 {
     if(s0_len != s1_len) return 0;
     for(u32 i = 0; i < s0_len; i += 1) if(s0[i] != s1[i]) return 0;
@@ -87,8 +87,9 @@ u8 is_num_char(char c)
 u8 is_alpha_char(char c)
 {
     c &= 0b11011111;
+    c -= 'A';
 
-    return (c >= 'A') && (c <= 'Z');
+    return c < 26;
 }
 
 u8 is_newline(char c)
