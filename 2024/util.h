@@ -58,6 +58,7 @@ typedef enum
     TOKEN_CPAREN = ')',
     TOKEN_COMMA  = ',',
     TOKEN_APOST  = '\'',
+    TOKEN_PIPE   = '|',
     TOKEN_END,
     TOKEN_COUNT
 } token_type;
@@ -84,7 +85,7 @@ u8 is_num_char(char c)
     return (c >= '0') && (c <= '9');
 }
 
-u8 is_alpha_char(char c)
+u8 is_alpha_char(unsigned char c)
 {
     c &= 0b11011111;
     c -= 'A';
@@ -167,6 +168,7 @@ token read_token(tokeniser *t)
         case TOKEN_CPAREN:
         case TOKEN_COMMA:
         case TOKEN_APOST:
+        case TOKEN_PIPE:
         case TOKEN_NEWLINE:
         {
             ret.type = *t->current;
@@ -190,6 +192,15 @@ void print_token(token *t)
 {
     switch(t->type)
     {
+        case TOKEN_OPAREN:
+        case TOKEN_CPAREN:
+        case TOKEN_COMMA:
+        case TOKEN_APOST:
+        case TOKEN_PIPE:
+        {
+            printf("TOKEN: Type(%c) Len:(%u)", t->type, t->len);
+            break;
+        }
         case TOKEN_INTEGER:
         {
             printf("TOKEN: Type:(INTEGER) Len:(%u) Str:(%.*s) Val:(%u)", t->len, t->len, t->loc, t->int_val);
@@ -204,6 +215,16 @@ void print_token(token *t)
         case TOKEN_END:
         {
             printf("TOKEN: Type:(END)");
+            break;
+        }
+        case TOKEN_WORD:
+        {
+            printf("TOKEN: Type:(WORD) Len:(%u) Str(%.*s)", t->len, t->len, t->loc);
+            break;
+        }
+        default:
+        {
+            printf("TOKEN UNKNOWN: Type:(%u) Len(%u)", t->type, t->len);
             break;
         }
     }
