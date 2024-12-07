@@ -70,6 +70,7 @@ typedef enum
     TOKEN_COMMA  = ',',
     TOKEN_APOST  = '\'',
     TOKEN_PIPE   = '|',
+    TOKEN_COLON  = ':',
     TOKEN_END,
     TOKEN_COUNT
 } token_type;
@@ -80,7 +81,7 @@ typedef struct
     u32        len;
     token_type type;
 
-    u32 int_val;
+    u64 int_val;
 } token;
 
 u32 str_len(const char *s)
@@ -135,6 +136,20 @@ u32 str_to_int(char *str, u32 str_len)
     return int_val;
 }
 
+u64 str_to_u64(char *str, u32 str_len)
+{
+    u64 int_val = 0;
+    u64 radix   = 1;
+
+    for(char *s = (str + str_len - 1); s >= str; s -= 1)
+    {
+        int_val += radix * (u64)(*s - '0');
+        radix *= 10;
+    }
+
+    return int_val;
+}
+
 token read_token(tokeniser *t)
 {
     token ret = {0};
@@ -154,7 +169,7 @@ token read_token(tokeniser *t)
         ret.type = TOKEN_INTEGER;
         for(; is_num_char(*t->current) && (t->current != t->end); t->current += 1);
         ret.len = t->current - ret.loc;
-        ret.int_val = str_to_int(ret.loc, ret.len);
+        ret.int_val = str_to_u64(ret.loc, ret.len);
 
         return ret;
     }
@@ -187,6 +202,7 @@ token read_token(tokeniser *t)
         case TOKEN_COMMA:
         case TOKEN_APOST:
         case TOKEN_PIPE:
+        case TOKEN_COLON:
         case TOKEN_NEWLINE:
         {
             ret.type = *t->current;
@@ -214,6 +230,7 @@ void print_token(token *t)
         case TOKEN_CPAREN:
         case TOKEN_COMMA:
         case TOKEN_APOST:
+        case TOKEN_COLON:
         case TOKEN_PIPE:
         {
             printf("TOKEN: Type(%c) Len:(%u)", t->type, t->len);
