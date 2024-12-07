@@ -3,6 +3,9 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+typedef int8_t   s8;
+typedef int32_t  s32;
+typedef int64_t  s64;
 typedef uint8_t  u8;
 typedef uint32_t u32;
 typedef uint64_t u64;
@@ -23,6 +26,14 @@ u8 *read_file_contents(const char *path, u32 *ret_file_size)
     
     *ret_file_size = (u32)file_size;
     return file_contents;
+}
+
+void write_file_contents(const char *path, u8 *contents, u32 contents_size)
+{
+    HANDLE file_handle = CreateFile(path, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    DWORD bytes_written;
+    WriteFile(file_handle, contents, contents_size, &bytes_written, NULL);
+    CloseHandle(file_handle);
 }
 
 void dealloc(void *ptr)
@@ -71,6 +82,13 @@ typedef struct
 
     u32 int_val;
 } token;
+
+u32 str_len(const char *s)
+{
+    u32 len = 0;
+    for(; s[len]; len += 1);
+    return len;
+}
 
 u8 str_eq(const char *s0, u32 s0_len, const char *s1, u32 s1_len)
 {
