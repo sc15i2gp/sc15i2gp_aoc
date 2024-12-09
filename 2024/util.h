@@ -15,7 +15,7 @@ void *alloc(u32 size)
     return VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 }
 
-u8 *read_file_contents(const char *path, u32 *ret_file_size)
+u8 *read_file_contents(const char *path, u64 *ret_file_size)
 {
     HANDLE file_handle   = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     DWORD  file_size     = GetFileSize(file_handle, NULL);
