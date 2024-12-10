@@ -38,45 +38,11 @@ u8 is_in_bounds(s32 x, s32 y, s32 w, s32 h)
     return (0 <= x) && (x < w) && (0 <= y) && (y < h);
 }
 
-void traverse_trail(char *map, char *alt_map, s64 map_w, s64 map_h, s64 sx, s64 sy, s64 sp)
-{
-    char level = map[sp];
-    alt_map[sp] = level;
-    if(level == 9) return;
-
-    //Above
-    s64 x = sx;
-    s64 y = sy - 1;
-    s64 p = sp - map_w;
-    if(is_in_bounds(x, y, map_w, map_h) && map[p] == (level+1))
-    traverse_trail(map, alt_map, map_w, map_h, x, y, p);
-
-    //Below
-    x = sx;
-    y = sy + 1;
-    p = sp + map_w;
-    if(is_in_bounds(x, y, map_w, map_h) && map[p] == (level+1))
-    traverse_trail(map, alt_map, map_w, map_h, x, y, p);
-
-    //Left
-    x = sx - 1;
-    y = sy;
-    p = sp - 1;
-    if(is_in_bounds(x, y, map_w, map_h) && map[p] == (level+1))
-    traverse_trail(map, alt_map, map_w, map_h, x, y, p);
-
-    //Right
-    x = sx + 1;
-    y = sy;
-    p = sp + 1;
-    if(is_in_bounds(x, y, map_w, map_h) && map[p] == (level+1))
-    traverse_trail(map, alt_map, map_w, map_h, x, y, p);
-}
-
-u64 score_trailhead(char *map, s64 map_w, s64 map_h, s64 sx, s64 sy, s64 sp)
+u64 score_trailhead(char *map, char *alt_map, s64 map_w, s64 map_h, s64 sx, s64 sy, s64 sp)
 {
     u64 score = 0;
     char level = map[sp];
+    alt_map[sp] = level;
 
     if(level == '9') score += 1;
     else
@@ -87,7 +53,7 @@ u64 score_trailhead(char *map, s64 map_w, s64 map_h, s64 sx, s64 sy, s64 sp)
         s64 p = sp - map_w;
         if(is_in_bounds(x, y, map_w, map_h) && map[p] == (level + 1))
         {
-            score += score_trailhead(map, map_w, map_h, x, y, p);
+            score += score_trailhead(map, alt_map, map_w, map_h, x, y, p);
         }
 
         //Below
@@ -96,7 +62,7 @@ u64 score_trailhead(char *map, s64 map_w, s64 map_h, s64 sx, s64 sy, s64 sp)
         p = sp + map_w;
         if(is_in_bounds(x, y, map_w, map_h) && map[p] == (level + 1))
         {
-            score += score_trailhead(map, map_w, map_h, x, y, p);
+            score += score_trailhead(map, alt_map, map_w, map_h, x, y, p);
         }
 
         //Left
@@ -105,7 +71,7 @@ u64 score_trailhead(char *map, s64 map_w, s64 map_h, s64 sx, s64 sy, s64 sp)
         p = sp - 1;
         if(is_in_bounds(x, y, map_w, map_h) && map[p] == (level + 1))
         {
-            score += score_trailhead(map, map_w, map_h, x, y, p);
+            score += score_trailhead(map, alt_map, map_w, map_h, x, y, p);
         }
 
         //Right
@@ -114,7 +80,7 @@ u64 score_trailhead(char *map, s64 map_w, s64 map_h, s64 sx, s64 sy, s64 sp)
         p = sp + 1;
         if(is_in_bounds(x, y, map_w, map_h) && map[p] == (level + 1))
         {
-            score += score_trailhead(map, map_w, map_h, x, y, p);
+            score += score_trailhead(map, alt_map, map_w, map_h, x, y, p);
         }
     }
 
@@ -149,6 +115,7 @@ int main()
 
     clear_map(alt_map, map_w, map_h);
 
+    u64 rating_sum = 0;
     u64 score_sum = 0;
     for(s64 y = 0, i = 0; y < map_h; y += 1)
     {
@@ -156,23 +123,13 @@ int main()
         {
             if(map[i] == '0')
             {
-                traverse_trail(map, alt_map, map_w, map_h, x, y, i);
+                rating_sum += score_trailhead(map, alt_map, map_w, map_h, x, y, i);
                 for(u64 j = 0; j < map_size; j += 1) if(alt_map[j] == '9') score_sum += 1;
                 clear_map(alt_map, map_w, map_h);
             }
         }
     }
     printf("Part 1: Sum scores = %lu\n", score_sum);
-
-    u64 rating_sum = 0;
-    for(s64 y = 0, i = 0; y < map_h; y += 1)
-    {
-        for(s64 x = 0; x < map_w; x += 1, i += 1)
-        {
-            if(map[i] == '0') rating_sum += score_trailhead(map, map_w, map_h, x, y, i);
-        }
-    }
     printf("Part 2: Sum ratings = %lu\n", rating_sum);
-    
     return 0;
 }
