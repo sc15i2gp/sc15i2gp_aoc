@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
@@ -9,6 +10,9 @@ typedef int64_t  s64;
 typedef uint8_t  u8;
 typedef uint32_t u32;
 typedef uint64_t u64;
+
+typedef float    f32;
+typedef double   f64;
 
 void *alloc(u32 size)
 {
@@ -71,6 +75,8 @@ typedef enum
     TOKEN_APOST  = '\'',
     TOKEN_PIPE   = '|',
     TOKEN_COLON  = ':',
+    TOKEN_PLUS   = '+',
+    TOKEN_EQUALS = '=',
     TOKEN_END,
     TOKEN_COUNT
 } token_type;
@@ -203,6 +209,8 @@ token read_token(tokeniser *t)
         case TOKEN_APOST:
         case TOKEN_PIPE:
         case TOKEN_COLON:
+        case TOKEN_PLUS:
+        case TOKEN_EQUALS:
         case TOKEN_NEWLINE:
         {
             ret.type = *t->current;
@@ -231,6 +239,8 @@ void print_token(token *t)
         case TOKEN_COMMA:
         case TOKEN_APOST:
         case TOKEN_COLON:
+        case TOKEN_PLUS:
+        case TOKEN_EQUALS:
         case TOKEN_PIPE:
         {
             printf("TOKEN: Type(%c) Len:(%u)", t->type, t->len);
