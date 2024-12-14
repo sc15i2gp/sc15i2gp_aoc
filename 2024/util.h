@@ -87,7 +87,7 @@ typedef struct
     u32        len;
     token_type type;
 
-    u64 int_val;
+    s64 int_val;
 } token;
 
 u32 str_len(const char *s)
@@ -107,7 +107,7 @@ u8 str_eq(const char *s0, u32 s0_len, const char *s1, u32 s1_len)
 
 u8 is_num_char(char c)
 {
-    return (c >= '0') && (c <= '9');
+    return ((c >= '0') && (c <= '9')) || c == '-';
 }
 
 u8 is_alpha_char(unsigned char c)
@@ -142,18 +142,25 @@ u32 str_to_int(char *str, u32 str_len)
     return int_val;
 }
 
-u64 str_to_u64(char *str, u32 str_len)
+s64 str_to_s64(char *str, u32 str_len)
 {
-    u64 int_val = 0;
-    u64 radix   = 1;
+    s64 int_val = 0;
+    s64 radix   = 1;
+    s64 sign    = 1;
+    if(*str == '-')
+    {
+        sign = -1;
+        str += 1;
+        str_len -= 1;
+    }
 
     for(char *s = (str + str_len - 1); s >= str; s -= 1)
     {
-        int_val += radix * (u64)(*s - '0');
+        int_val += radix * (s64)(*s - '0');
         radix *= 10;
     }
 
-    return int_val;
+    return sign * int_val;
 }
 
 token read_token(tokeniser *t)
@@ -175,7 +182,7 @@ token read_token(tokeniser *t)
         ret.type = TOKEN_INTEGER;
         for(; is_num_char(*t->current) && (t->current != t->end); t->current += 1);
         ret.len = t->current - ret.loc;
-        ret.int_val = str_to_u64(ret.loc, ret.len);
+        ret.int_val = str_to_s64(ret.loc, ret.len);
 
         return ret;
     }
