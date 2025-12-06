@@ -1,0 +1,301 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <math.h>
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
+typedef int8_t   s8;
+typedef int32_t  s32;
+typedef int64_t  s64;
+typedef uint8_t  u8;
+typedef uint32_t u32;
+typedef uint64_t u64;
+
+typedef float    f32;
+typedef double   f64;
+
+inline
+s32 abs_s32(s32 n)
+{
+    if(n < 0) n = -n;
+    return n;
+}
+
+void *alloc(u32 size)
+{
+    return VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+}
+
+u8 *read_file_contents(const char *path, u64 *ret_file_size)
+{
+    HANDLE file_handle   = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    DWORD  file_size     = GetFileSize(file_handle, NULL);
+    u8    *file_contents = (u8*)alloc(file_size);
+    DWORD  bytes_read;
+    ReadFile(file_handle, file_contents, file_size, &bytes_read, NULL);
+    CloseHandle(file_handle);
+    
+    *ret_file_size = (u32)file_size;
+    return file_contents;
+}
+
+void write_file_contents(const char *path, u8 *contents, u32 contents_size)
+{
+    HANDLE file_handle = CreateFile(path, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    DWORD bytes_written;
+    WriteFile(file_handle, contents, contents_size, &bytes_written, NULL);
+    CloseHandle(file_handle);
+}
+
+void dealloc(void *ptr)
+{
+    VirtualFree(ptr, 0, MEM_RELEASE);
+}
+
+typedef struct
+{
+    char *start;
+    char *end;
+    char *current;
+} tokeniser;
+
+tokeniser init_tokeniser(char *in, u32 in_len)
+{
+    tokeniser t;
+    t.start   = in;
+    t.end     = in + in_len;
+    t.current = t.start;
+    
+    return t;
+}
+
+typedef enum
+{
+    TOKEN_NONE = 0,
+    TOKEN_INTEGER,
+    TOKEN_WORD,
+    TOKEN_SPACE,
+    TOKEN_NEWLINE  = '\n',
+    TOKEN_TAB      = '\t',
+    TOKEN_OPAREN   = '(',
+    TOKEN_CPAREN   = ')',
+    TOKEN_COMMA    = ',',
+    TOKEN_APOST    = '\'',
+    TOKEN_PIPE     = '|',
+    TOKEN_COLON    = ':',
+    TOKEN_PLUS     = '+',
+    TOKEN_ASTERISK = '*',
+    TOKEN_EQUALS   = '=',
+    TOKEN_END,
+    TOKEN_COUNT
+} token_type;
+
+typedef struct
+{
+    char      *loc;
+    u32        len;
+    token_type type;
+
+    s64 int_val;
+} token;
+
+u32 str_len(const char *s)
+{
+    u32 len = 0;
+    for(; s[len]; len += 1);
+    return len;
+}
+
+u8 str_eq(const char *s0, u32 s0_len, const char *s1, u32 s1_len)
+{
+    if(s0_len != s1_len) return 0;
+    for(u32 i = 0; i < s0_len; i += 1) if(s0[i] != s1[i]) return 0;
+
+    return 1;
+}
+
+u8 is_num_char(char c)
+{
+    return ((c >= '0') && (c <= '9')) || c == '-';
+}
+
+u8 is_alpha_char(unsigned char c)
+{
+    c &= 0b11011111;
+    c -= 'A';
+
+    return c < 26;
+}
+
+u8 is_newline(char c)
+{
+    return c == '\n';
+}
+
+u8 is_space(char c)
+{
+    return c == ' ';
+}
+
+u32 str_to_int(char *str, u32 str_len)
+{
+    u32 int_val = 0;
+    u32 radix   = 1;
+
+    for(char *s = (str + str_len - 1); s >= str; s -= 1)
+    {
+        int_val += radix * (u32)(*s - '0');
+        radix *= 10;
+    }
+
+    return int_val;
+}
+
+s64 str_to_s64(char *str, u32 str_len)
+{
+    s64 int_val = 0;
+    s64 radix   = 1;
+    s64 sign    = 1;
+    if(*str == '-')
+    {
+        sign = -1;
+        str += 1;
+        str_len -= 1;
+    }
+
+    for(char *s = (str + str_len - 1); s >= str; s -= 1)
+    {
+        int_val += radix * (s64)(*s - '0');
+        radix *= 10;
+    }
+
+    return sign * int_val;
+}
+
+token read_token(tokeniser *t)
+{
+    token ret = {0};
+    if(t->current >= t->end)
+    {
+        ret.type   = TOKEN_END;
+        ret.loc    = t->end;
+        ret.len    = 0;
+        t->current = t->end;
+
+        return ret;
+    }
+
+    if(is_num_char(*t->current))
+    {
+        ret.loc  = t->current;
+        ret.type = TOKEN_INTEGER;
+        for(; is_num_char(*t->current) && (t->current != t->end); t->current += 1);
+        ret.len = t->current - ret.loc;
+        ret.int_val = str_to_s64(ret.loc, ret.len);
+
+        return ret;
+    }
+
+    if(is_alpha_char(*t->current))
+    {
+        ret.loc  = t->current;
+        ret.type = TOKEN_WORD;
+        for(; is_alpha_char(*t->current) && (t->current != t->end); t->current += 1);
+        ret.len = t->current - ret.loc;
+
+        return ret;
+    }
+
+    if(is_space(*t->current))
+    {
+        ret.type = TOKEN_SPACE;
+        ret.loc  = t->current;
+
+        for(; is_space(*t->current) && (t->current != t->end); t->current += 1);
+        ret.len = t->current - ret.loc;
+
+        return ret;
+    }
+
+    switch(*t->current)
+    {
+        case TOKEN_OPAREN:
+        case TOKEN_CPAREN:
+        case TOKEN_COMMA:
+        case TOKEN_APOST:
+        case TOKEN_PIPE:
+        case TOKEN_COLON:
+        case TOKEN_PLUS:
+        case TOKEN_EQUALS:
+        case TOKEN_NEWLINE:
+        case TOKEN_ASTERISK:
+        {
+            ret.type = *t->current;
+            ret.loc  = t->current;
+            ret.len  = 1;
+
+            t->current += 1;
+
+            return ret;
+        }
+    }
+
+    ret.type = TOKEN_NONE;
+    ret.loc  = t->current;
+    ret.len  = 1;
+
+    return ret;
+}
+
+token lookahead_token(tokeniser *to)
+{
+    char *tc = to->current;
+    token t = read_token(to);
+    to->current = tc;
+    return t;
+}
+
+void print_token(token *t)
+{
+    switch(t->type)
+    {
+        case TOKEN_OPAREN:
+        case TOKEN_CPAREN:
+        case TOKEN_COMMA:
+        case TOKEN_APOST:
+        case TOKEN_COLON:
+        case TOKEN_PLUS:
+        case TOKEN_EQUALS:
+        case TOKEN_PIPE:
+        {
+            printf("TOKEN: Type(%c) Len:(%u)", t->type, t->len);
+            break;
+        }
+        case TOKEN_INTEGER:
+        {
+            printf("TOKEN: Type:(INTEGER) Len:(%u) Str:(%.*s) Val:(%u)", t->len, t->len, t->loc, t->int_val);
+            break;
+        }
+        case TOKEN_SPACE:
+        case TOKEN_NEWLINE:
+        {
+            printf("TOKEN: Type:(WHITESPACE) Len:(%u)", t->len);
+            break;
+        }
+        case TOKEN_END:
+        {
+            printf("TOKEN: Type:(END)");
+            break;
+        }
+        case TOKEN_WORD:
+        {
+            printf("TOKEN: Type:(WORD) Len:(%u) Str(%.*s)", t->len, t->len, t->loc);
+            break;
+        }
+        default:
+        {
+            printf("TOKEN UNKNOWN: Type:(%u) Len(%u)", t->type, t->len);
+            break;
+        }
+    }
+}
